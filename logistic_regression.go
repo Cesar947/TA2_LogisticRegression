@@ -214,6 +214,8 @@ func main() {
 	cant_filas, _ := matriz_inicial.Dims()
 	cantidad_corte := float64(cant_filas) * 0.8
 
+	//Separación del dataset en entrenamiento y pruebas
+
 	train := df.Filter(dataframe.F{"PassengerId", series.LessEq, cantidad_corte})
 	test := df.Filter(dataframe.F{"PassengerId", series.Greater, cantidad_corte})
 
@@ -227,18 +229,21 @@ func main() {
 	matriz_etiquetas_train := matrix{etiquetas_train}
 	matriz_etiquetas_test := matrix{etiquetas_test}
 
+	//Inicializando los pesos
+
 	_, n_entradas := matriz_entradas_train.Dims()
 	pesos_iniciales := inicializarPesos(n_entradas)
 
+	//Inicializando la estructura de regresión logística
 	reg := RegresionLogistica{0.5, pesos_iniciales, 5000, 1}
-
 	//resultados_entrenamiento :=
+
+	//Entranamiento
 	reg.entrenar(matriz_entradas_train, matriz_etiquetas_train)
-	/*clasificaciones_train := clasificar(resultados_entrenamiento)
-	precision_train := precision(clasificaciones_train, matriz*/
 
 	resultados_prueba := reg.testear(matriz_entradas_test)
+	fmt.Println("Predicciones")
 	imprimirMatriz(resultados_prueba)
 	precision_test := precision(resultados_prueba, matriz_etiquetas_test)
-	fmt.Printf("Accuracy Test: %v \n", precision_test*100)
+	fmt.Printf("Accuracy Test: %v \n", precision_test)
 }
