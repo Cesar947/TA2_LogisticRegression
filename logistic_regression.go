@@ -5,6 +5,7 @@ import (
 	"math"
 	"math/rand"
 	"os"
+	"sync"
 
 	"github.com/go-gota/gota/dataframe"
 	"github.com/go-gota/gota/series"
@@ -55,6 +56,7 @@ func factorUmbral(matriz_resta mat.Matrix) float64 {
 	return sum
 }
 
+//Para la precisión. Cuenta los números de la matriz que no son ceros para saber cuántos resultados fueorn incorrectos
 func contadorNoCeros(matriz_resta mat.Matrix) int {
 	var count int
 	valores := mat.Col(nil, 0, matriz_resta)
@@ -79,6 +81,7 @@ func crearPredicciones(x mat.Matrix, umbral float64) mat.Matrix {
 	return mat.NewDense(size, 1, process_outputs)
 }
 
+//Función que hace los calculos del modelo lineal y la función sigmoide
 func (regresion *RegresionLogistica) predecir(entradas mat.Matrix) mat.Matrix {
 
 	//Resultados modelo lineal
@@ -93,6 +96,7 @@ func (regresion *RegresionLogistica) predecir(entradas mat.Matrix) mat.Matrix {
 	return predicciones
 }
 
+//Función de costo para poder definir una configuración de coeficientes óptima
 func funcion_costo(etiquetas, predicciones mat.Matrix) float64 {
 
 	vector_etiquetas := mat.Col(nil, 0, etiquetas)
@@ -118,6 +122,7 @@ func funcion_costo(etiquetas, predicciones mat.Matrix) float64 {
 
 }
 
+//Actualiza los coeficientes o pesos del algoritmo a través del método de la gradiente descendiente
 func (regresion *RegresionLogistica) actualizarPesos(entradas, etiquetas, predicciones mat.Matrix) {
 	//Se multiplicará la traspuesto de la matriz de entradas por
 	// la resta entre las matrices predicciones y etiquetas.
@@ -150,6 +155,7 @@ func (regresion *RegresionLogistica) actualizarPesos(entradas, etiquetas, predic
 
 }
 
+//Entrenar al algoritmo. Repetir, de acuerdo al número de iteraciones, las funciones "predecir" y "actualizar pesos"
 func (regresion *RegresionLogistica) entrenar(entradas, etiquetas mat.Matrix) mat.Matrix {
 	var predicciones mat.Matrix
 
@@ -164,6 +170,7 @@ func (regresion *RegresionLogistica) entrenar(entradas, etiquetas mat.Matrix) ma
 
 }
 
+//Convertir valores continuos del sigmoide en 1 y 0 para la clasificación
 func clasificar(predicciones mat.Matrix) mat.Matrix {
 	valores := mat.Col(nil, 0, predicciones)
 
@@ -178,6 +185,7 @@ func clasificar(predicciones mat.Matrix) mat.Matrix {
 	return matriz_clasificacion
 }
 
+//Calcular los resultados del dataset de prueba
 func (regresion *RegresionLogistica) testear(entradas_test mat.Matrix) mat.Matrix {
 
 	predicciones_test := regresion.predecir(entradas_test)
@@ -215,27 +223,33 @@ func main() {
 	cantidad_corte := float64(cant_filas) * 0.8
 
 	//Separación del dataset en entrenamiento y pruebas
+	var matriz_entradas_train, matriz_entradas_test, matriz_etiquetas_train, matriz_etiquetas_test mat.Matrix
 
 	train := df.Filter(dataframe.F{"PassengerId", series.LessEq, cantidad_corte})
 	test := df.Filter(dataframe.F{"PassengerId", series.Greater, cantidad_corte})
 
-	entradas_train := train.Select([]string{"Pclass", "Sex", "SibSp", "Fare", "has_C", "has_Q", "has_S"})
-	entradas_test := test.Select([]string{"Pclass", "Sex", "SibSp", "Fare", "has_C", "has_Q", "has_S"})
-	etiquetas_train := train.Select([]string{"Survived"})
-	etiquetas_test := test.Select([]string{"Survived"})
+	var waitGroup sync.WaitGroup
+	waitGroup.Add(1)
+	go func() {
+		entradas_train := train.Select([]string{"Pclass", "Sex", "SibSp", "Fare", "has_C", "has_Q", "has_S"})
+		entradas_test := test.Select([]string{"Pclass", "Sex", "SibSp", "Fare", "has_C", "has_Q", "has_S"})
+		etiquetas_train := train.Select([]string{"Survived"})
+		etiquetas_test := test.Select([]string{"Survived"})
 
-	matriz_entradas_train := matrix{entradas_train}
-	matriz_entradas_test := matrix{entradas_test}
-	matriz_etiquetas_train := matrix{etiquetas_train}
-	matriz_etiquetas_test := matrix{etiquetas_test}
-
+		matriz_entradas_train = matrix{entradas_train}
+		matriz_entradas_test = matrix{entradas_test}
+		matriz_etiquetas_train = matrix{etiquetas_train}
+		matriz_etiquetas_test = matrix{etiquetas_test}
+		waitGroup.Done()
+	}()
+	waitGroup.Wait()
 	//Inicializando los pesos
 
 	_, n_entradas := matriz_entradas_train.Dims()
 	pesos_iniciales := inicializarPesos(n_entradas)
 
 	//Inicializando la estructura de regresión logística
-	reg := RegresionLogistica{0.5, pesos_iniciales, 5000, 1}
+	reg := RegresionLogistica{0.5, pesos_iniciales, 6000, 1}
 	//resultados_entrenamiento :=
 
 	//Entranamiento
@@ -245,5 +259,5 @@ func main() {
 	fmt.Println("Predicciones")
 	imprimirMatriz(resultados_prueba)
 	precision_test := precision(resultados_prueba, matriz_etiquetas_test)
-	fmt.Printf("Accuracy Test: %v \n", precision_test)
+	fmt.Println("Accuracy Test:", precision_test*100, "%")
 }
