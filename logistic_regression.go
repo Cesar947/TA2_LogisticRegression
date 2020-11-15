@@ -126,9 +126,9 @@ func funcion_costo(etiquetas, predicciones mat.Matrix) float64 {
 func (regresion *RegresionLogistica) actualizarPesos(entradas, etiquetas, predicciones mat.Matrix) {
 	//Se multiplicará la traspuesto de la matriz de entradas por
 	// la resta entre las matrices predicciones y etiquetas.
-	//entradas.Dims() = (871 7)
-	//predicciones.Dims() = etiquetas.Dims() = (871 1)
-	//entradas.T().Dims() = (7 871)
+	//entradas.Dims() = (891 7)
+	//predicciones.Dims() = etiquetas.Dims() = (891 1)
+	//entradas.T().Dims() = (7 891)
 	//matriz_gradiente.Dims() = pesos.Dims() = (7 1)
 
 	lr := regresion.factorAprendizaje
@@ -243,8 +243,8 @@ func main() {
 		waitGroup.Done()
 	}()
 	waitGroup.Wait()
-	//Inicializando los pesos
 
+	//Inicializando los pesos
 	_, n_entradas := matriz_entradas_train.Dims()
 	pesos_iniciales := inicializarPesos(n_entradas)
 
